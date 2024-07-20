@@ -12,36 +12,43 @@
 
 ### ex. 3ブラウザ同時 × 2回繰り返しアクセス（合計6回）を行った場合の例
 ```
-$ node stress-repeat.mjs 3 <対象URL> 2
-open 3 browsers
-#2-1 time: 1237ms
-#3-1 time: 1593ms
-#1-1 time: 1996ms
-#2-2 time: 665ms
-#1-2 time: 799ms
-#3-2 time: 756ms
-*** result ***
-mean:1174.33 min: 665 max:1996
+$ node stress-test.mjs 3 https://www.google.co.jp/  2 
+param1 URL     : https://www.google.co.jp/
+param2 open    : 3 browsers
+param3 repeat  : 2 times
+param4 delay   : 0 ms (For opening the next browser)
+param5 selector:  (For checking page loading completion)
+====== start : 08:44:59.044 ======
+#1-1 time: 1417ms
+#2-1 time: 1418ms
+#3-1 time: 1505ms
+#1-2 time: 691ms
+#2-2 time: 683ms
+#3-2 time: 746ms
+====== end:08:45:01.624 ======
+
+******** result ********
+mean:1076.67(ms) min: 683(ms) max:1505(ms)
 {
   sequence: [
-    { i: 2, times: 1, duration: 1237, endTime: 1699801162166 },
-    { i: 3, times: 1, duration: 1593, endTime: 1699801162724 },
-    { i: 1, times: 1, duration: 1996, endTime: 1699801162725 },
-    { i: 2, times: 2, duration: 665, endTime: 1699801163065 },
-    { i: 1, times: 2, duration: 799, endTime: 1699801163599 },
-    { i: 3, times: 2, duration: 756, endTime: 1699801163964 }
+    { browser: 1, times: 1, duration: 1417, endTime: '08:45:00.493' },
+    { browser: 2, times: 1, duration: 1418, endTime: '08:45:00.495' },
+    { browser: 3, times: 1, duration: 1505, endTime: '08:45:00.582' },
+    { browser: 1, times: 2, duration: 691, endTime: '08:45:01.353' },
+    { browser: 2, times: 2, duration: 683, endTime: '08:45:01.368' },
+    { browser: 3, times: 2, duration: 746, endTime: '08:45:01.479' }
   ],
-  durations: [ [ 1996, 799 ], [ 1237, 665 ], [ 1593, 756 ] ]
+  durations: [ [ 1417, 691 ], [ 1418, 683 ], [ 1505, 746 ] ]
 }
 ```
 
 
 ### 引数仕様
     1：同時に開くブラウザ数
-        未指定時は:1
+        未指定時は:PARALLEL_COUNT (両方未指定の場合:1)
     2：対象URL 
-    　　 未指定時は環境変数：STRESS_TARGET_URL
-    3: 繰り返し回数
+    　　 未指定時は環境変数：STRESS_TARGET_URL (両方未指定時はPG終了)
+    3: 1ブラウザあたりの繰り返し回数
         未指定時は環境変数：REPEAT_COUNT (両方未指定の場合:1)
     4：ブラウザ読み込みをずらす時間(ms) 
         未指定時は環境変数：OPEN_DELAY (両方未指定の場合:0)
@@ -54,13 +61,14 @@ mean:1174.33 min: 665 max:1996
 ```javascript
 /**
  * 負荷テスト用スクリプト 
- * ・指定数のブラウザを同時に開き、全ブラウザが読み込み完了する時間を測定する
+ * ・指定した数のブラウザで、対象ページを指定回数開き、ページ読み込みにかかった時間を出力する
+ * ・引数の代わりに環境変数(.env)で指定も可能
  * 引数
  *   1：同時に開くブラウザ数
- *      未指定時は:1
+ *      未指定時は:PARALLEL_COUNT (両方未指定の場合:1)
  *   2：対象URL 
- * 　　 未指定時は環境変数：STRESS_TARGET_URL
- *   3: 繰り返し回数
+ * 　　 未指定時は環境変数：STRESS_TARGET_URL (両方未指定時はPG終了)
+ *   3: 1ブラウザあたりの繰り返し回数
  *      未指定時は環境変数：REPEAT_COUNT (両方未指定の場合:1)
  *   4：ブラウザ読み込みをずらす時間(ms) 
  *      未指定時は環境変数：OPEN_DELAY (両方未指定の場合:0)
@@ -73,9 +81,17 @@ import * as dotenv from 'dotenv'
 dotenv.config(); // .env初期化
 
 const getArgs = (i, def) => process.argv.length > i ? process.argv[i]: def;
+const formatHMS = (timestamp) => {
+    return (new Date(timestamp)).toLocaleString('ja-JP',{
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3,
+    });
+}
 
 // 引数1: 並列実行数
-const pallallelCount = parseInt(getArgs(2, 1), 10);
+const parallelCount = parseInt(getArgs(2, process.env.PARALLEL_COUNT ?? 1), 10);
 // 引数2: 対象URL
 const targetURL = getArgs(3, process.env.STRESS_TARGET_URL);
 // 引数3: 繰り返し回数
@@ -88,7 +104,11 @@ const waitSelector = getArgs(6, process.env.RENDER_WAIT_SELECTOR ?? '');
 // 対象URLがなければ終了
 if (!targetURL) {process.exit(0)};
 
-console.log(`open ${pallallelCount} browsers`);
+console.log(`param1 URL     : ${targetURL}`);
+console.log(`param2 open    : ${parallelCount} browsers`);
+console.log(`param3 repeat  : ${repeatCount} times`);
+console.log(`param4 delay   : ${execDelay} ms (For opening the next browser)`);
+console.log(`param5 selector: ${waitSelector} (For checking page loading completion)`);
 
 // chrome(headless: false)で起動
 const browser = await chromium.launch({ headless: false });
@@ -98,7 +118,7 @@ const browser = await chromium.launch({ headless: false });
 const contexts = [];
 // 実行結果保持用
 const results = {sequence: [], durations: []};
-for (let i = 0; i < pallallelCount; i++) {
+for (let i = 0; i < parallelCount; i++) {
     const context = await browser.newContext();
     const page = await context.newPage();
     page.setDefaultTimeout(120*1000);
@@ -108,13 +128,14 @@ for (let i = 0; i < pallallelCount; i++) {
 
 // 実行結果を追加
 const addLog = (i, times, duration, endTime) => {
-    results.sequence.push({i, times, duration, endTime})
+    results.sequence.push({browser:i, times, duration, endTime:formatHMS(endTime)})
     results.durations[i-1].push(duration);
 }
 
 // 全ブラウザの処理完了を管理する(Promise)ための配列
 let procedures = [];
 
+console.log(`====== start : ${formatHMS(Date.now())} ======`);
 // ページ表示にかかった時間を、画面毎に表示する
 // 並行で実行させるためawaitを使わない
 for (let {i, page, context, delay} of contexts) {
@@ -132,7 +153,7 @@ for (let {i, page, context, delay} of contexts) {
                 startTime = Date.now();
                 return page.goto(targetURL); 
             }).then(
-                // 登録するボタンが表示されるまで待つ(jsによる動的ロード＋描画待ち)
+                // (waitSelectorが指定された場合は)表示されるまで待つ(jsによる動的ロード＋描画待ち)
                 () => waitSelector ? page.locator(`text=${waitSelector}`).innerHTML(): ''
             ).then(() => {
                 // 画面表示完了にかかった時間を表示
@@ -156,13 +177,14 @@ const dumpResult = (results) => {
     let min = Math.min(...durations);
     let max = Math.max(...durations);
 
-    console.log(`mean:${mean} min: ${min} max:${max}`);
+    console.log(`mean:${mean}(ms) min: ${min}(ms) max:${max}(ms)`);
     console.log(results);
 }
 
 // 全処理が完了したら後始末
 Promise.all(procedures).then(() => {
-    console.log('*** result ***');
+    console.log(`====== end:${formatHMS(Date.now())} ======`);
+    console.log('\n******** result ********');
     dumpResult(results);
     return browser.close();
 });

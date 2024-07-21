@@ -1,13 +1,12 @@
-# ブラウザを操作した負荷テストスクリプト(PlayWright)
+# 複数ブラウザを同時に起動して負荷テストを行うためのスクリプト(PlayWrightを利用)
 
 ## はじめに
-(PlayWrightを利用して)指定したURLに並列でアクセスするスクリプトです
+[PlayWright](https://playwright.dev/)を利用して、指定したURLに並列でアクセスを行うスクリプトです
 
-[Apache Bench](https://httpd.apache.org/docs/2.4/programs/ab.html)や[k6-benchmarks](https://github.com/grafana/k6-benchmarks)のようなベンチマークツールは、cssの読み込みや画面ロード時に発生するjsの描画を含めた時間を計測するのが困難なため、ブラウザを操作して表示にかかる時間を計測するスクリプトを作成しました
-
+[Apache Bench](https://httpd.apache.org/docs/2.4/programs/ab.html)や[k6-benchmarks](https://github.com/grafana/k6-benchmarks)のようなベンチマークツールは、cssの読み込みや画面ロード時に発生するjsの描画を含めた時間を計測するのが困難でした。
+そのためブラウザを操作して表示にかかる時間を計測するスクリプトを作成しました
 
 * ブラウザを利用して負荷をかけるため、画面のURLを指定すれば、cssやjavascriptファイルも同時に取得します
-
 * 指定した数のブラウザを同時に開き、全ブラウザが読み込み完了する時間を測定します
 * jsによる動的な画面描画を待つため、読み込み完了を判断するための文字列(画面に表示されたら完了)を指定することもできます
 * ブラウザ毎に繰り返す回数も指定できます

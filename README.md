@@ -11,11 +11,14 @@
 * jsによる動的な画面描画を待つため、読み込み完了を判断するための文字列(画面に表示されたら完了)を指定することもできます
 * ブラウザ毎に繰り返す回数も指定できます
 
-* 10ブラウザを同時に開いて、指定回数アクセスを繰り返すことができます
+* 10ブラウザを同時にブラウザを開くとこんな感じになります(動作状況を確認するため、headlessモードはoff)
 ![alt text](image.png)
 
 
 ### ex. 3ブラウザ同時 × 2回繰り返しアクセス（合計6回）を行った場合の実行結果例
+
+* ページオープンにかかった時間の平均、最小、最大を表示します
+
 ```
 $ node stress-test.mjs 3 https://www.google.co.jp/  2 
 param1 URL     : https://www.google.co.jp/
@@ -46,7 +49,67 @@ mean:1076.67(ms) min: 683(ms) max:1505(ms)
   durations: [ [ 1417, 691 ], [ 1418, 683 ], [ 1505, 746 ] ]
 }
 ```
+## 概要説明
 
+### ブラウザを複数同時に開く
+
+同一context内で複数ページを開く(タブを追加する)と、TCPコネクションを共有してしまうため、contextレベル(別ウィンドウを開く)で分離します
+
+* `browser.newContext()`でブラウザウィンドウを開き、`context.newPage()`タブを生成するイメージです
+
+```javascript
+const contexts = [];
+for (let i = 0; i < parallelCount; i++) {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    contexts.push({i: i+1, context, page, delay: i * execDelay});
+}
+```
+
+### 複数のウィンドウを同時に操作する
+
+* awaitを利用すると複数を並列で実行することができないため、Promiseを返して、then()で数珠繋ぎしながら実行します
+* ページ読み込みが終わったら、処理を指定回数繰り返すため、再帰呼び出しを利用します(procedure()関数)
+
+詳細は下記のコメント参照
+* 「//※ 」で始まるコメントは説明用に追記したコメント
+* 一部本筋と関係ない処理(ログ等)は削除
+
+```javascript
+for (let {i, page, context, delay} of contexts) {
+    // ※proceduresは、全処理が完了するのを待ち合わせるために利用
+    procedures.push(new Promise( (resolve)  => {
+        const procedure = (times) => {
+            if (times > repeatCount) {  // ※再帰呼び出しでtimesに実行回数が入っているので終了チェックを行う
+                // 指定回数実行したら終了
+                resolve();
+                return context.close();
+            }
+
+            // 指定秒ごとに開く
+            setTimeout(delay).then(() => { // ※delayで実行開始するまでの待ち時間を指定(0だと一斉にアクセスする。0以上にすればWebサーバーのプロセスの枯渇を防いで初回処理が早くなる場合がる)
+                return page.goto(targetURL); 
+            }).then(
+                // (waitSelectorが指定された場合は)表示されるまで待つ(jsによる動的な画面描画を待つ) //※ 未指定であればページロード完了まで待つ
+                () => waitSelector ? page.locator(`text=${waitSelector}`).innerHTML(): ''
+            ).then(() => {
+                // 画面表示完了にかかった時間を表示
+                // ※ 一旦画面をクリア
+                return page.goto('about:blank');
+            }).then(() => {
+                // 再度表示　//※ 処理完了したら、指定回数繰り返すため再帰呼び出しを行う(引数：呼び出し回数+1)
+                return procedure(++times);
+            });
+        };
+        procedure(1);
+    }));
+}
+
+// 全処理が完了したら後始末 //※ ブラウザを閉じる
+Promise.all(procedures).then(() => {
+    return browser.close();
+});
+```
 
 ### 引数仕様
     1：同時に開くブラウザ数
@@ -59,6 +122,8 @@ mean:1076.67(ms) min: 683(ms) max:1505(ms)
         未指定時は環境変数：OPEN_DELAY (両方未指定の場合:0)
     5：読み込み完了を判断するための文字列(未指定時はページが開けたら完了)
         未指定時は環境変数：RENDER_WAIT_SELECTOR（省略可）
+
+
 
 ### ソース
 

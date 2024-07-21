@@ -3,6 +3,8 @@
 ## はじめに
 [PlayWright](https://playwright.dev/)を利用して、指定したURLに並列でアクセスを行うスクリプトです
 
+https://github.com/murasuke/js-stress-test
+
 [Apache Bench](https://httpd.apache.org/docs/2.4/programs/ab.html)や[k6-benchmarks](https://github.com/grafana/k6-benchmarks)のようなベンチマークツールは、cssの読み込みや画面ロード時に発生するjsの描画を含めた時間を計測するのが困難でした。
 そのためブラウザを操作して表示にかかる時間を計測するスクリプトを作成しました
 
@@ -53,7 +55,7 @@ mean:1076.67(ms) min: 683(ms) max:1505(ms)
 
 ### ブラウザを複数同時に開く
 
-同一context内で複数ページを開く(タブを追加する)と、TCPコネクションを共有してしまうため、contextレベル(別ウィンドウを開く)で分離します
+同一[context](https://playwright.dev/docs/api/class-browsercontext)内で複数[ページ](https://playwright.dev/docs/api/class-page)を開く(タブを追加する)と、TCPコネクションを共有してしまうため、contextレベル(別ウィンドウを開く)で分離します
 
 * `browser.newContext()`でブラウザウィンドウを開き、`context.newPage()`タブを生成するイメージです
 

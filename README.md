@@ -1,16 +1,22 @@
 # ブラウザを操作した負荷テストスクリプト(PlayWright)
 
-指定したURLを並列でアクセスするスクリプトです(PlayWrightを利用)
+## はじめに
+(PlayWrightを利用して)指定したURLに並列でアクセスするスクリプトです
+
+[Apache Bench](https://httpd.apache.org/docs/2.4/programs/ab.html)や[k6-benchmarks](https://github.com/grafana/k6-benchmarks)のようなベンチマークツールは、cssの読み込みや画面ロード時に発生するjsの描画を含めた時間を計測するのが困難なため、ブラウザを操作して表示にかかる時間を計測するスクリプトを作成しました
+
 
 * ブラウザを利用して負荷をかけるため、画面のURLを指定すれば、cssやjavascriptファイルも同時に取得します
-* 20ブラウザを同時に開いて、指定回数アクセスを繰り返すことができます
-
 
 * 指定した数のブラウザを同時に開き、全ブラウザが読み込み完了する時間を測定します
+* jsによる動的な画面描画を待つため、読み込み完了を判断するための文字列(画面に表示されたら完了)を指定することもできます
 * ブラウザ毎に繰り返す回数も指定できます
 
+* 10ブラウザを同時に開いて、指定回数アクセスを繰り返すことができます
+![alt text](image.png)
 
-### ex. 3ブラウザ同時 × 2回繰り返しアクセス（合計6回）を行った場合の例
+
+### ex. 3ブラウザ同時 × 2回繰り返しアクセス（合計6回）を行った場合の実行結果例
 ```
 $ node stress-test.mjs 3 https://www.google.co.jp/  2 
 param1 URL     : https://www.google.co.jp/
@@ -54,7 +60,6 @@ mean:1076.67(ms) min: 683(ms) max:1505(ms)
         未指定時は環境変数：OPEN_DELAY (両方未指定の場合:0)
     5：読み込み完了を判断するための文字列(未指定時はページが開けたら完了)
         未指定時は環境変数：RENDER_WAIT_SELECTOR（省略可）
-
 
 ### ソース
 
@@ -153,7 +158,7 @@ for (let {i, page, context, delay} of contexts) {
                 startTime = Date.now();
                 return page.goto(targetURL); 
             }).then(
-                // (waitSelectorが指定された場合は)表示されるまで待つ(jsによる動的ロード＋描画待ち)
+                // (waitSelectorが指定された場合は)表示されるまで待つ(jsによる動的な画面描画を待つ)
                 () => waitSelector ? page.locator(`text=${waitSelector}`).innerHTML(): ''
             ).then(() => {
                 // 画面表示完了にかかった時間を表示

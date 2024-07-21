@@ -92,7 +92,7 @@ for (let {i, page, context, delay} of contexts) {
                 startTime = Date.now();
                 return page.goto(targetURL); 
             }).then(
-                // (waitSelectorが指定された場合は)表示されるまで待つ(jsによる動的ロード＋描画待ち)
+                // (waitSelectorが指定された場合は)表示されるまで待つ(jsによる動的な画面描画を待つ)
                 () => waitSelector ? page.locator(`text=${waitSelector}`).innerHTML(): ''
             ).then(() => {
                 // 画面表示完了にかかった時間を表示
